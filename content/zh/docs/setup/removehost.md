@@ -50,3 +50,5 @@ kubeadm reset -f
 kubectl get nodes # 查找该节点的k8s node名称
 kubectl delete node <node_name>
 ```
+
+6. 已下线宿主机还要再次添加到k8s集群，需要重启恢复宿主机上的网络后再次添加
