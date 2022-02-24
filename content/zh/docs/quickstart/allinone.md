@@ -92,7 +92,7 @@ $ git clone https://github.com/yunionio/ocboot && cd ./ocboot
 
 ### 快速部署
 
-可以直接执行run.py来快速部署一个AllInOne的Cloudpods实例，其中<host_ip>为部署所在主机的主IP地址。
+可以直接执行run.py来快速部署一个AllInOne的Cloudpods实例，其中<host_ip>为部署所在主机的主IP地址。如果部署在公有云服务器上，<host_ip>应该是主机的内网IP地址。
 
 ```bash
 $ ./run.py <host_ip>
