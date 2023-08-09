@@ -1,16 +1,22 @@
 ---
 title: "部署 DB HA 环境"
 date: 2020-02-12T12:55:46+08:00
-weight: 3
+weight: 4
 description: >
   部署高可用数据库集群
 ---
 
-Cloudpods 服务使用 Mariadb，这里使用 keepalived 和 Mariadb 的主主复制功能来实现 DB 的高可用。
+{{<oem_name>}} 平台服务使用 Mariadb，这里使用 keepalived 和 Mariadb 的主主复制功能来实现 DB 的高可用。
 
 ## 部署
 
 keepalived 的主要作用是为 Mariadb 提供 vip，在2个 Mariadb 实例之间切换，不间断的提供服务。
+
+下文示例中：
+
+- DB VIP：192.168.199.97
+- 主节点IP：192.168.199.98
+- 备节点IP：192.168.199.99
 
 ### 部署配置 Mariadb 主主复制
 
@@ -69,6 +75,7 @@ skip_name_resolve
 expire_logs_days=30
 innodb_file_per_table=ON
 max_connections = 300
+max_allowed_packet=20M
  
 server-id = 1
 auto_increment_offset = 1
@@ -119,6 +126,7 @@ skip_name_resolve
 expire_logs_days=30
 innodb_file_per_table=ON
 max_connections = 300
+max_allowed_packet=20M
  
 server-id = 2
 auto_increment_offset = 2

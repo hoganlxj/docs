@@ -1,8 +1,10 @@
 ---
 title: "ROADMAP"
 weight: 101
+edition: ce
 description: >
   Roadmap
+img: /images/icons/icon-introduce.svg
 ---
 
 ## Architecture

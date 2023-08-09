@@ -1,10 +1,18 @@
 ---
-title: "部署集群"
+title: "部署集群(已废弃)"
 date: 2019-04-13T13:01:57+08:00
+edition: ce
+draft: true
 weight: 4
 description: >
   部署 kubernetes 和 Cloudpods 服务，创建第一个控制节点
 ---
+
+{{% alert title="注意" color="warning" %}}
+本章内容是通过手动在 CentOS 7 上一步一步部署 Cloudpods 服务，已经不建议这么做，本文只是保留作为参考，提供给想要了解部署流程的用户查看。
+
+实际环境中部署请根据自己使用需求参考: [All in One 安装](../../quickstart/allinone) 或者 [高可用安装](../../quickstart/ha) 部署。
+{{% /alert %}}
 
 ## 环境准备
 
@@ -12,9 +20,11 @@ Cloudpods 相关的组件运行在 kubernetes 之上，环境以及相关的软�
 
 - 操作系统: CentOS 7.6
 - 最低配置要求: CPU 4核, 内存 8G, 存储 150G
+- 虚拟机和服务使用的存储路径都在 **/opt** 目录下，所以理想环境下建议单独给 **/opt** 目录设置挂载点
+    - 比如把 /dev/sdb1 单独分区做 ext4 然后通过 /etc/fstab 挂载到 /opt 目录
 - 数据库: mariadb (CentOS 7自带的版本：Ver 15.1 Distrib 5.5.56-MariaDB）
-- docker: ce-19.03.9
-- kubernetes: v1.15.8
+- docker: ce-20.10.5
+- kubernetes: v1.15.12
 
 需要能访问如下网址，如果企业有外网隔离规则，则需要打开相应白名单：
 
@@ -28,10 +38,13 @@ Cloudpods 相关的组件运行在 kubernetes 之上，环境以及相关的软�
 
 mariadb 作为服务数据持久化的数据库，可以部署在其它节点或者使用单独维护的。下面假设还没有部署 mariadb，在控制节点上安装设置 mariadb。
 
-为了方便运行维护，mariadb推荐打开两个参数设施：
+为了方便运行维护，mariadb推荐打开四个参数设施：
 
 * skip_name_resolve：取消域名解析
 * expire_logs_days=30：设置binlog的超时时间为30天，超过30天的binglog自动删除
+* innodb_file_per_table=ON: 设置innodb的每张表都用一个独立文件存储数据，便于后期数据清理
+* max_connections=300: 设置最大连接数为300
+* max_allowed_packet=20M: 设置最大数据包大小为20M
 
 ```bash
 $ MYSQL_PASSWD='your-sql-passwd'
@@ -53,6 +66,9 @@ symbolic-links=0
 skip_name_resolve
 # auto delete binlog older than 30 days
 expire_logs_days=30
+innodb_file_per_table=ON
+max_connections = 300
+max_allowed_packet=20M
 
 [mysqld_safe]
 log-error=/var/log/mariadb/mariadb.log
@@ -77,8 +93,8 @@ $ systemctl restart mariadb
 ```bash
 $ yum install -y yum-utils bash-completion
 # 添加 yunion Cloudpods rpm 源
-$ yum-config-manager --add-repo https://iso.yunion.cn/yumrepo-3.6/yunion.repo
-$ yum install -y docker-ce-19.03.9 docker-ce-cli-19.03.9 containerd.io
+$ yum-config-manager --add-repo https://iso.yunion.cn/yumrepo-3.8/yunion.repo
+$ yum install -y docker-ce docker-ce-cli containerd.io
 ```
 
 配置 docker
@@ -118,31 +134,31 @@ $ systemctl enable --now docker
 
 ### 安装 Cloudpods 依赖内核
 
-这里需要安装我们编译的内核，这个内核是基于上游 CentOS 3.10.0-1062 编译的，默认添加了 nbd 模块，nbd 模块用于镜像相关的操作。
+这里需要安装我们编译的内核，这个内核是基于上游 CentOS 3.10.0-1160 编译的，默认添加了 nbd 模块，nbd 模块用于镜像相关的操作。
 
 ```bash
 # 安装内核
 $ yum install -y \
-  kernel-3.10.0-1062.4.3.el7.yn20191203 \
-  kernel-devel-3.10.0-1062.4.3.el7.yn20191203 \
-  kernel-headers-3.10.0-1062.4.3.el7.yn20191203
+  kernel-3.10.0-1160.6.1.el7.yn20201125 \
+  kernel-devel-3.10.0-1160.6.1.el7.yn20201125 \
+  kernel-headers-3.10.0-1160.6.1.el7.yn20201125
 
 # 重启系统进入内核
 $ reboot
 
 # 重启完成后，查看当前节点内核信息
-# 确保为 3.10.0-1062.4.3.el7.yn20191203.x86_64
+# 确保为 3.10.0-1160.6.1.el7.yn20201125.x86_64
 $ uname -r
-3.10.0-1062.4.3.el7.yn20191203.x86_64
+3.10.0-1160.6.1.el7.yn20201125.x86_64
 ```
 
 ### 安装配置 kubelet
 
-从 Cloudpods rpm 的 yum 源安装 kubernetes 1.15.8，并设置 kubelet 开机自启动
+从 Cloudpods rpm 的 yum 源安装 kubernetes 1.15.12，并设置 kubelet 开机自启动
 
 ```bash
 $ yum install -y bridge-utils ipvsadm conntrack-tools \
-    jq kubelet-1.15.8-0 kubectl-1.15.8-0 kubeadm-1.15.8-0
+    jq kubelet-1.15.12-0 kubectl-1.15.12-0 kubeadm-1.15.12-0
 $ echo 'source <(kubectl completion bash)' >> ~/.bashrc && source ~/.bashrc
 $ source /etc/profile
 $ systemctl enable kubelet
@@ -167,7 +183,7 @@ $ systemctl disable firewalld
 $ systemctl stop NetworkManager
 $ systemctl disable NetworkManager
 $ ps -ef|grep dhcp | awk '{print $2}' |xargs kill -9
- 
+
 # 做一些 sysctl 的配置, kubernetes 要求
 $ modprobe br_netfilter
 
@@ -180,13 +196,14 @@ EOF
 $ sysctl -p
 
 # 配置并开启 ipvs
-$ cat <<EOF > /etc/sysconfig/modules/ipvs.modules
+$ cat <<"EOF" > /etc/sysconfig/modules/ipvs.modules
 #!/bin/bash
-ipvs_modules="ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack_ipv4"
-for kernel_module in \${ipvs_modules}; do
-    /sbin/modinfo -F filename \${kernel_module} > /dev/null 2>&1
+
+ipvs_modules="ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack br_netfilter"
+for kernel_module in ${ipvs_modules}; do
+    /sbin/modinfo -F filename ${kernel_module} > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-        /sbin/modprobe \${kernel_module}
+        /sbin/modprobe ${kernel_module}
     fi
 done
 EOF
@@ -215,7 +232,7 @@ $ yum install -y yunion-executor && systemctl enable --now yunion-executor
 
 ### 部署 kubernetes 集群
 
-接下来会现在当前节点启动 v1.15.8 的 kubernetes 服务，然后部署 Cloudpods 控制节点相关的服务到 kubernetes 集群。
+接下来会现在当前节点启动 v1.15.12 的 kubernetes 服务，然后部署 Cloudpods 控制节点相关的服务到 kubernetes 集群。
 
 拉取必要的 docker 镜像
 
@@ -362,10 +379,10 @@ $ ocadm reset --force
 
 ```bash
 # 安装rpm包
-$ yum --disablerepo='*' --enablerepo='yunion*' install -y \
+$ yum install -y \
   epel-release libaio jq libusb lvm2 nc ntp yunion-fetcherfs fuse fuse-devel fuse-libs \
   oniguruma pciutils spice spice-protocol sysstat tcpdump usbredir \
-  yunion-qemu-2.12.1 yunion-executor \
+  yunion-qemu-2.12.1 yunion-executor ceph-common \
   kmod-openvswitch \
   openvswitch net-tools
 
@@ -377,10 +394,10 @@ $ systemctl enable --now yunion-executor
 ```bash
 # 用 kubectl get nodes 拿到当前的节点名称
 $ kubectl get nodes
-NAME           STATUS   ROLES    AGE 
+NAME           STATUS   ROLES    AGE
 controller01   Ready    master   116d
-controller02   Ready    master   40d 
-node01         Ready    <none>   25d 
+controller02   Ready    master   40d
+node01         Ready    <none>   25d
 
 # 假设我要把 controller01 和 controller02 作为计算节点
 $ ocadm node enable-host-agent \

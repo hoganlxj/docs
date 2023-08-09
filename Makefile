@@ -1,7 +1,8 @@
 HUGO_VERSION = 0.83.1
 IMAGE_VERSION=$(shell scripts/hash-files.sh Dockerfile | cut -c 1-12)
-CONTAINER_IMAGE = registry.cn-beijing.aliyuncs.com/yunionio/docs-hugo:v$(HUGO_VERSION)-$(IMAGE_VERSION)
-CONTAINER_RUN = docker run --rm --interactive --tty --volume $(CURDIR):/src
+#CONTAINER_IMAGE = registry.cn-beijing.aliyuncs.com/yunionio/docs-hugo:v$(HUGO_VERSION)-$(IMAGE_VERSION)
+CONTAINER_IMAGE = registry.cn-beijing.aliyuncs.com/yunionio/docs-hugo:v$(HUGO_VERSION)
+CONTAINER_RUN = docker run --rm --interactive --tty --volume $(CURDIR):/src --user $(shell id -u):$(shell id -g)
 HOST := http://localhost:1313
 
 .PHONY: setup
@@ -12,6 +13,9 @@ module-check:
 setup:
 	bash -x ./scripts/setup.sh
 
+setup-upstream:
+	bash -x ./scripts/setup-upstream.sh
+
 container-image:
 	docker build . \
 		--network=host \
@@ -20,23 +24,68 @@ container-image:
 
 container-build: setup
 	$(CONTAINER_RUN) --read-only --mount type=tmpfs,destination=/tmp,tmpfs-mode=01777 $(CONTAINER_IMAGE) \
-		sh -c "HOST=$(HOST) EXIT_AFTER_BUILD=true ./scripts/build.sh"
+		sh -c "make ce-build"
 
 container-serve: setup
 	$(CONTAINER_RUN) --read-only --mount type=tmpfs,destination=/tmp,tmpfs-mode=01777 -p 1313:1313 $(CONTAINER_IMAGE) hugo server --buildFuture --bind 0.0.0.0 --destination /tmp/hugo --cleanDestinationDir
 
 sync-changelog:
-	rsync -avP ./content/zh/docs/changelog/ ./content/en/docs/changelog
+	rsync -avP ./content/zh/docs/development/changelog/ ./content/en/docs/changelog
 	find ./content/en/docs/changelog | grep .md$ | xargs \
-		sed -r -i "s|相关代码仓库的 CHANGELOG|CHANGELOG of each release Version|g; \
+		sed -r -i "" "s|相关代码仓库的 CHANGELOG|CHANGELOG of each release Version|g; \
 			s|(.*) CHANGELOG 汇总，最近发布版本: (.*) , 时间: (.*)|\1 CHANGELOG Summary, most recent version: \2, time: \3|g; \
 			s|发布时间|Release time:|g; \
 			s|仓库地址|Repo|g"
 
-local-serve:
-	HOST=http://localhost:1313 EXIT_AFTER_BUILD=true ./scripts/build.sh
+local-serve: setup
+	./scripts/build.py --host=http://localhost:1313 --edition=ce
 	cd public && python3 -m http.server 1313
 
-test:
-	HOST=http://localhost:1313 EXIT_AFTER_BUILD=true ./scripts/build.sh test
-	cd public && python3 -m http.server 1313
+ce-local-serve: 
+	hugo serve --bind 0.0.0.0 --config ./config.toml
+
+ce-build:
+	./scripts/build.py \
+		--host=https://www.cloudpods.org \
+		--edition=ce \
+		--multi-versions
+
+ce-build-offline:
+	./scripts/build.py \
+		--mode=offline \
+		--edition=ce \
+
+######### For EE ####################
+# OEM=OEMCLOUD OEM_NAME=OEM云平台 make ee-image
+ee-image: setup
+	make -f ./Makefile.ee image
+
+ee-local-serve: 
+	hugo serve --bind 0.0.0.0 --config ./config-ee.toml
+
+ee-build: setup
+	make -f ./Makefile.ee online-build
+
+# OEM=OEMCLOUD OEM_NAME=OEM云平台 make ee-build-offline
+ee-build-offline: setup
+	make -f ./Makefile.ee offline-build
+
+gpt:
+	@if [ -z "$$OCBOOT_VERSION" ]; then \
+		echo "ERROR:please export OCBOOT_VERSION before make gpt"; \
+		exit 1; \
+	fi 	
+	perl -0777 -pe 's/^title: "?([^"]+)"?.*?description:[\s\n>]+(.*?)$$/## $$1 $$2/gms' -i $$(find . -name '*.md')
+	perl -0777 -pe 's/!\[\]\([^()]+\)//gms' -i $$(find . -name '*.md')
+	perl -0777 -pe 's/<img[^<>]+>//gms' -i $$(find . -name '*.md')
+	perl -0777 -pe 's/\{\{<oem_name>\}\}/云联壹云/gms' -i $$(find . -name '*.md')
+	perl -0777 -pe 's#\{\{% /?alert[^%}]*%\}\}##gms' -i $$(find . -name '*.md')
+	perl -0777 -pe "s#\{\{<(?:pre_)?release_version>\}\}#$(OCBOOT_VERSION)#gms" -i $$(find . -name '*.md')
+
+	@for file in $$(find content/zh/docs/ -name '*.md'); do \
+		new_name=$$(echo $$file|tr '/' '-'); \
+		cp -fv $$file data/$$new_name; \
+	done
+	rm -f data/*-release-*.md
+	git checkout .
+

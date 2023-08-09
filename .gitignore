@@ -27,6 +27,16 @@ package-lock.json
 *.so
 *.swp
 
+# hugo
+.hugo_build.lock
 .content
 .assets
 .static
+
+# convert results
+_output
+
+# python
+*.pyc
+__pycache__
+data/
