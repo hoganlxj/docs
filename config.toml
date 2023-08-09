@@ -55,6 +55,7 @@ id = "UA-00000000-0"
 [languages.zh]
 title = "Cloudpods"
 version_menu = "版本"
+view_text = "点击查看"
 description = "Cloudpods文档"
 languageName ="中文"
 contentDir = "content/zh"
@@ -66,6 +67,12 @@ time_format_blog = "02.01.2006"
     name = "快速开始"
     weight = -100
     url = "docs/quickstart/"
+
+# Additional menu items
+[[languages.zh.menu.main]]
+    name = "服务订阅"
+    weight = 21
+    url = "https://www.yunion.cn/subscription/index.html"
 
 [[languages.zh.menu.main]]
     name = "GitHub"
@@ -135,7 +142,15 @@ time_format_blog = "02.01.2006"
 ### Everything below this are Site Params ###
 
 [params]
+oem = "cloudpods"
+oem_name = "Cloudpods"
+pre_release_version = "v3.9.12"
+release_version = "v3.10.4"
+release_branch = "release/3.10"
 copyright = "The Cloudpods Authors."
+icp_code = "京ICP备2021005745号-3"
+is_ee = false
+view_text = "Click to view"
 
 # First one is picked as the Twitter card image if not set on page.
 # images = ["images/project-illustration.png"]
@@ -191,3 +206,15 @@ no = 'Sorry to hear that. Please <a href="https://github.com/yunionio/docs/issue
 [params.ui.readingtime]
 enable = false
 
+[security]
+  enableInlineShortcodes = false
+  [security.exec]
+    allow = ['^dart-sass-embedded$', '^go$', '^npx$', '^postcss$']
+    osEnv = ['(?i)^(PATH|PATHEXT|APPDATA|TMP|TEMP|TERM)$']
+
+  [security.funcs]
+    getenv = ['^HUGO_', 'CURRENT_VERSION', 'CONTENT_DIR', 'VERSIONS']
+
+  [security.http]
+    methods = ['(?i)GET|POST']
+    urls = ['.*']

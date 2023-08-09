@@ -10,7 +10,10 @@
 <link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink | safeURL }}">
 {{ end -}}
 {{ partialCached "favicons.html" . }}
-<title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ with .Title }}{{ . }} | {{ end }}{{ .Site.Title }}{{ end }}</title>
+<!-- <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ with .Title }}{{ . }} | {{ end }}{{ .Site.Title }}{{ end }}</title> -->
+<title>
+  {{ partial "title.html" . }}
+</title>
 {{- template "_internal/opengraph.html" . -}}
 {{- template "_internal/google_news.html" . -}}
 {{- template "_internal/schema.html" . -}}
@@ -30,7 +33,7 @@
    -   integrity="sha384-vRQ9bDyE0Wnu+lMfm57BlYLO0/XauFuKpVsZPs7KEDwYKktWi5+Kz3MP8++DFlRY"
    -   crossorigin="anonymous"></script>
    -->
-<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 {{end}}
 {{ with .Site.Params.prism_syntax_highlighting }}
 <!-- stylesheet for Prism -->
