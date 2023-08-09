@@ -31,7 +31,19 @@ systemctl stop openvswitch && systemctl disable openvswitch
 进一步地，可以卸载kubelet, yunion-executor, openvswitch等rpm，并清除相关的数据目录：
 
 ```bash
-rm -fr /etc/kubernetes /var/lib/etcd /opt/yunion /opt/cloud /etc/openvswitch
+rm -fr /etc/kubernetes /var/lib/etcd /opt/yunion//bin/executor /etc/openvswitch /root/.kube
+```
+
+卸载数据库：
+```bash
+yum -y remove mariadb*
+rm -rf /var/lib/mysql  # 若保留原始数据执行 mv  -f /var/lib/mysql /var/lib/mysql.$(date +"%Y%m%d-%H%M").bak
+rm -rf /etc/my.conf
+```
+
+机器重启恢复之前的网络配置：
+```bash
+reboot
 ```
 
 ## Kubernetes Helm 安装
